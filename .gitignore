@@ -1,2 +1,5 @@
 /Data
 Layers.jpeg
+unet.pth
+deeplab.pth
+normalization.json
