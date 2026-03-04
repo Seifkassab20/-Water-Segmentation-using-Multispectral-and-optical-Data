@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Water Segmentation AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(135deg, #0f2027, #2c5364, #ffffff);
+        min-height: 100vh;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .container {
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(12px);
+        padding: 40px;
+        border-radius: 20px;
+        width: 900px;
+        box-shadow: 0 0 40px rgba(0, 150, 255, 0.3);
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 36px;
+        margin-bottom: 10px;
+        color: #4fc3f7;
+      }
+
+      .subtitle {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 16px;
+        opacity: 0.8;
+      }
+
+      .info-box {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 8px;
+        border: none;
+        font-size: 14px;
+      }
+
+      select,
+      input {
+        background: #f5f5f5;
+        color: #000;
+      }
+
+      button {
+        background: #2196f3;
+        color: white;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+
+      button:hover {
+        background: #0d47a1;
+      }
+
+      .results {
+        margin-top: 30px;
+        text-align: center;
+      }
+
+      img {
+        margin-top: 20px;
+        border-radius: 10px;
+        max-width: 100%;
+        box-shadow: 0 0 20px rgba(0, 150, 255, 0.4);
+      }
+
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 12px;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>🌊 Water Segmentation AI</h1>
+      <div class="subtitle">
+        Deep Learning-Based Multispectral Water Detection System
+      </div>
+
+      <div class="info-box">
+        <b>Project Overview:</b><br />
+        This system performs semantic segmentation on multispectral satellite
+        imagery (.tif). It detects water bodies using advanced deep learning
+        models:
+        <br /><br />
+        • UNet (Custom Architecture)<br />
+        • DeepLabV3 (ResNet50 Backbone)<br />
+        <br />
+        Input: 6-band satellite image<br />
+        Output: Water probability mask + confidence score
+      </div>
+
+      <form action="/predict" method="post" enctype="multipart/form-data">
+        <label>Select Model</label>
+        <select name="model_name">
+          <option value="unet">UNet</option>
+          <option value="deeplab">DeepLabV3</option>
+        </select>
+
+        <label>Upload .tif Image</label>
+        <input type="file" name="image" accept=".tif" required />
+
+        <button type="submit">Run Segmentation</button>
+      </form>
+
+      {% if rgb_image %}
+      <div class="results">
+        <h3>RGB Preview</h3>
+        <img src="{{ rgb_image }}" alt="RGB Image" />
+
+      {% endif %}
+
+      <footer>
+        GPU-Accelerated | PyTorch + Flask | Multispectral AI System
+      </footer>
+    </div>
+  </body>
+</html>

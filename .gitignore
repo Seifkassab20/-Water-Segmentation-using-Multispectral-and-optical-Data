@@ -3,3 +3,8 @@ Layers.jpeg
 unet.pth
 deeplab.pth
 normalization.json
+__pycache__
+app/static/outputs
+app/static/uploads
+static/outputs
+static/uploads

@@ -18,7 +18,7 @@ class DoubleConv(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=12, out_channels=2):
+    def __init__(self, in_channels=6, out_channels=2):
         super().__init__()
 
         self.down1 = DoubleConv(in_channels, 64)
