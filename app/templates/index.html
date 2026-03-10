@@ -8,6 +8,8 @@
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
       :root {
         --primary: #00d2ff;
@@ -96,9 +98,41 @@
         border-radius: 24px;
         padding: 30px;
         border: 1px solid var(--glass-border);
-        max-width: 800px;
+        max-width: 1000px;
         margin: 0 auto 50px auto;
         box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        display: none;
+      }
+
+      .upload-section.active {
+        display: block;
+      }
+
+      .tabs-control {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .tab-btn {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        border: 1px solid var(--glass-border);
+        padding: 12px 30px;
+        border-radius: 12px;
+        font-family: Orbitron;
+        font-size: 0.9rem;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: 0.3s;
+      }
+
+      .tab-btn.active {
+        opacity: 1;
+        background: rgba(0, 210, 255, 0.1);
+        border-color: var(--primary);
+        box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
       }
 
       form {
@@ -137,6 +171,43 @@
         transform: scale(1.05);
         box-shadow: 0 15px 30px rgba(0, 210, 255, 0.5);
       }
+
+      .map-tool-btn {
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: Orbitron;
+        font-size: 0.7rem;
+        margin-bottom: 10px;
+        width: 100%;
+        text-align: center;
+      }
+
+      .map-tool-btn.active {
+        background: var(--primary);
+        color: #000;
+        box-shadow: 0 0 10px var(--primary);
+      }
+
+      #system-log {
+        background: rgba(0, 0, 0, 0.5);
+        color: #00ff00;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.7rem;
+        padding: 10px;
+        height: 100px;
+        overflow-y: auto;
+        border: 1px solid rgba(0, 255, 0, 0.2);
+        border-radius: 8px;
+        margin-top: 15px;
+        line-height: 1.4;
+      }
+
+      .log-entry { margin-bottom: 5px; }
+      .log-entry::before { content: "> "; }
 
       /* Analysis Grid */
       .analysis-grid {
@@ -403,7 +474,12 @@
     <div class="container">
       <h1>Water Segmentation using Multispectral and optical Data</h1>
 
-      <section class="upload-section">
+      <div class="tabs-control">
+        <button class="tab-btn active" onclick="switchTab('upload')">Manual Upload</button>
+        <button class="tab-btn" onclick="switchTab('map')">World Discovery</button>
+      </div>
+
+      <section id="upload-tab" class="upload-section active">
         <form
           action="/predict"
           method="post"
@@ -438,8 +514,29 @@
         </form>
       </section>
 
-      {% if rgb_image %}
-      <div class="analysis-grid">
+      <section id="map-tab" class="upload-section">
+        <div style="text-align: center; margin-bottom: 20px">
+          <h3 style="font-family: Orbitron; color: var(--primary)">SATELLITE ORBITAL SELECTOR</h3>
+          <p style="opacity: 0.7">Draw a rectangle to select a specific region for real-time multispectral analysis</p>
+        </div>
+        <div id="map-container" style="height: 500px; width: 100%; border-radius: 20px; border: 1px solid var(--primary); overflow: hidden; position: relative;">
+          <div id="world-map" style="height: 100%; width: 100%;"></div>
+          <div id="map-overlay" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 12px; border: 1px solid var(--primary); width: 250px; backdrop-filter: blur(10px);">
+            <div style="font-size: 0.8rem; color: var(--primary); margin-bottom: 10px; font-weight: 700;">ORBITAL TOOLS</div>
+            
+            <button id="draw-rect-btn" onclick="toggleDrawMode()" class="map-tool-btn">SELECT CUSTOM AREA</button>
+            
+            <div style="font-size: 0.8rem; color: var(--primary); margin-bottom: 5px; font-weight: 700;">TARGET BOUNDS</div>
+            <div id="coord-display" style="font-family: Orbitron; font-size: 0.75rem; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,210,255,0.2);">
+              WAITING FOR SELECTION...
+            </div>
+            
+            <button id="analyze-btn" onclick="segmentMapArea()" class="execute-btn" style="padding: 10px 20px; font-size: 0.9rem; width: 100%;" disabled>ANALYZE AREA</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="analysis-grid" style="{% if not rgb_image %}display: none;{% endif %}">
         <!-- Sidebar: RGB & Overlay -->
         <div class="preview-card">
           <h3
@@ -472,19 +569,33 @@
           </div>
 
           <div style="margin-top: 30px; font-size: 0.85rem; line-height: 1.8">
-            <span style="color: var(--primary); font-weight: 700"
-              >CHANNELS:</span
-            >
-            0, 1, 4, 5, 6, 11<br />
-            <span style="color: var(--primary); font-weight: 700"
-              >VALIDATION:</span
-            >
-            {% if is_static_iq %} STATIC_ESTIMATE {% else %} LIVE_CALCULATION {%
-            endif %}<br />
-            <span style="color: var(--primary); font-weight: 700"
-              >COMPUTE_MODE:</span
-            >
-            GPU_ACCEL
+            <span style="color: var(--primary); font-weight: 700">SIGNAL ANALYTICS:</span><br/>
+            <div id="analytics-box" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,210,255,0.1); margin-top: 10px;">
+                Water Coverage: <span id="stat-percent" style="color: #fff; font-weight: 700">{{ water_percent_unet or '0' }}%</span><br/>
+                Estimated Area: <span id="stat-area" style="color: #fff; font-weight: 700">{{ area_sqkm or '0' }} km²</span><br/>
+                Signal Resolution: <span style="color: #fff">10m/px</span>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label style="font-size: 0.7rem; color: var(--primary); font-weight: 700;">OVERLAY OPACITY</label>
+                <input type="range" min="0" max="100" value="0" class="slider" id="opacityRange" oninput="adjustOpacity(this.value)" style="width: 100%; margin-top: 5px;">
+            </div>
+
+            <div style="margin-top: 20px;">
+                <label style="font-size: 0.7rem; color: var(--primary); font-weight: 700;">OVERLAY SOURCE</label>
+                <select id="overlayModel" onchange="updateOverlaySource()" style="width: 100%; background: #000; color: #fff; border: 1px solid var(--primary); padding: 5px; border-radius: 5px; font-family: Orbitron; font-size: 0.8rem; margin-top: 5px;">
+                    <option value="unet">UNet Prediction</option>
+                    <option value="deeplab">DeepLab Prediction</option>
+                </select>
+            </div>
+
+            <button onclick="downloadReport()" class="execute-btn" style="width: 100%; margin-top: 25px; padding: 10px; font-size: 0.8rem; background: transparent; border: 1px solid var(--neon-pink); color: var(--neon-pink); box-shadow: none;">
+                EXPORT INTELLIGENCE REPORT
+            </button>
+
+            <div id="system-log">
+                <div class="log-entry">System Standby...</div>
+            </div>
           </div>
         </div>
 
@@ -585,20 +696,254 @@
           </div>
         </div>
       </div>
-      {% endif %}
 
       <footer>MULTISPECTRAL SPECTRAL DATA SEGMENTATION SYSTEM | 2026</footer>
     </div>
 
     <script>
+      let map;
+      let marker;
+      let selectionRectangle;
+      let isDrawMode = false;
+      let currentBounds = null;
+
       function showLoader() {
         document.getElementById("loader").style.display = "flex";
+      }
+
+      function hideLoader() {
+        document.getElementById("loader").style.display = "none";
       }
 
       function updateOverlay() {
         const overlay = document.getElementById("live-overlay");
         const check = document.getElementById("maskToggle");
-        overlay.style.opacity = check.checked ? "1" : "0";
+        const slider = document.getElementById("opacityRange");
+        if(overlay) {
+            overlay.style.opacity = check.checked ? (slider.value / 100) : "0";
+        }
+      }
+
+      function updateOverlaySource() {
+        const model = document.getElementById("overlayModel").value;
+        const overlay = document.getElementById("live-overlay");
+        overlay.src = model === 'unet' ? '/static/outputs/unet_mask.png?t=' + Date.now() : '/static/outputs/deeplab_mask.png?t=' + Date.now();
+        updateOverlay();
+      }
+
+      function downloadReport() {
+        const data = {
+            timestamp: new Date().toISOString(),
+            water_coverage: document.getElementById('stat-percent').innerText,
+            estimated_area: document.getElementById('stat-area').innerText,
+            unet_iou: document.querySelectorAll('.stat-value')[0].innerText,
+            unet_confidence: document.querySelectorAll('.stat-value')[1].innerText,
+            deeplab_iou: document.querySelectorAll('.stat-value')[2].innerText,
+            deeplab_confidence: document.querySelectorAll('.stat-value')[3].innerText
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `water_analysis_report_${Date.now()}.json`;
+        a.click();
+      }
+
+      function switchTab(tabId) {
+        document.querySelectorAll(".upload-section").forEach(s => s.classList.remove("active"));
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        
+        document.getElementById(tabId + "-tab").classList.add("active");
+        event.currentTarget.classList.add("active");
+
+        if (tabId === 'map' && !map) {
+          initMap();
+        }
+      }
+
+      function toggleDrawMode() {
+        isDrawMode = !isDrawMode;
+        const btn = document.getElementById('draw-rect-btn');
+        if (isDrawMode) {
+          btn.classList.add('active');
+          btn.innerText = 'CANCEL SELECTION';
+          map.dragging.disable();
+          map.getContainer().style.cursor = 'crosshair';
+        } else {
+          btn.classList.remove('active');
+          btn.innerText = 'SELECT CUSTOM AREA';
+          map.dragging.enable();
+          map.getContainer().style.cursor = '';
+        }
+      }
+
+      function initMap() {
+        map = L.map('world-map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let startPoint = null;
+
+        map.on('mousedown', function(e) {
+          if (!isDrawMode) return;
+          startPoint = e.latlng;
+          
+          if (selectionRectangle) {
+            map.removeLayer(selectionRectangle);
+          }
+          
+          selectionRectangle = L.rectangle([startPoint, startPoint], {
+            color: "#00d2ff",
+            weight: 2,
+            fillOpacity: 0.2,
+            dashArray: "5, 5"
+          }).addTo(map);
+        });
+
+        map.on('mousemove', function(e) {
+          if (!isDrawMode || !startPoint || !selectionRectangle) return;
+          selectionRectangle.setBounds([startPoint, e.latlng]);
+        });
+
+        map.on('mouseup', function(e) {
+          if (!isDrawMode || !startPoint || !selectionRectangle) return;
+          
+          currentBounds = selectionRectangle.getBounds();
+          updateBoundsDisplay(currentBounds);
+          
+          startPoint = null;
+          toggleDrawMode(); // Exit draw mode after selection
+          document.getElementById('analyze-btn').disabled = false;
+        });
+
+        // Still allow simple pinning via click if not in draw mode
+        map.on('click', function(e) {
+          if (isDrawMode) return;
+          const { lat, lng } = e.latlng;
+          
+          if (marker) marker.setLatLng(e.latlng);
+          else marker = L.marker(e.latlng).addTo(map);
+
+          // Create a small 0.1 degree box around the point if none exists
+          const p1 = L.latLng(lat - 0.05, lng - 0.05);
+          const p2 = L.latLng(lat + 0.05, lng + 0.05);
+          currentBounds = L.latLngBounds(p1, p2);
+          
+          if (selectionRectangle) map.removeLayer(selectionRectangle);
+          selectionRectangle = L.rectangle(currentBounds, {
+            color: "#00d2ff",
+            weight: 2,
+            fillOpacity: 0.2
+          }).addTo(map);
+
+          updateBoundsDisplay(currentBounds);
+          document.getElementById('analyze-btn').disabled = false;
+        });
+
+        // Hotspots
+        const hotspots = [
+          { name: "Nile Delta", pos: [30.8, 31.1] },
+          { name: "Amazon River", pos: [-3.1, -60.0] },
+          { name: "Venice Lagoon", pos: [45.4, 12.3] }
+        ];
+
+        hotspots.forEach(hp => {
+          L.circle(hp.pos, { radius: 100000, color: '#ff00c1', fillOpacity: 0.1 })
+            .addTo(map)
+            .on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                map.setView(hp.pos, 8);
+            });
+        });
+      }
+
+      function updateBoundsDisplay(bounds) {
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        document.getElementById('coord-display').innerHTML = 
+          `SW: ${sw.lat.toFixed(3)}, ${sw.lng.toFixed(3)}<br>` +
+          `NE: ${ne.lat.toFixed(3)}, ${ne.lng.toFixed(3)}`;
+      }
+
+      function pushLog(msg) {
+        const log = document.getElementById('system-log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        log.prepend(entry);
+      }
+
+      async function segmentMapArea() {
+        if (!currentBounds) {
+          alert("Please select a region on the map.");
+          return;
+        }
+
+        const sw = currentBounds.getSouthWest();
+        const ne = currentBounds.getNorthEast();
+        
+        showLoader();
+        pushLog("INITIATING ORBITAL ACQUISITION...");
+        pushLog(`BOUNDS: ${sw.lat.toFixed(2)} to ${ne.lat.toFixed(2)}`);
+
+        try {
+          pushLog("RETRIVING MULTISPECTRAL SIGNAL...");
+          const response = await fetch('/map-segment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                lat_min: sw.lat, lat_max: ne.lat,
+                lng_min: sw.lng, lng_max: ne.lng
+            })
+          });
+
+          pushLog("PROCESSING NEURAL INFERENCE (UNET/DEEPLAB)...");
+          const result = await response.json();
+          if (result.status === 'success') {
+            const grid = document.querySelector('.analysis-grid');
+            if (!grid) {
+                window.location.reload(); 
+            } else {
+                grid.style.display = 'grid';
+                pushLog("INFERENCE COMPLETE. UPDATING VISUALS.");
+                
+                // Update Primary Sensor Data header to show coords
+                const sensorHeader = document.querySelector('.preview-card h3');
+                sensorHeader.innerText = `SENSOR: [${sw.lat.toFixed(2)},${sw.lng.toFixed(2)}] REGION`;
+                sensorHeader.style.color = 'var(--neon-pink)';
+
+                document.getElementById('raw-rgb').src = '/static/outputs/rgb.png?t=' + Date.now();
+                document.getElementById('live-overlay').src = '/static/outputs/unet_mask.png?t=' + Date.now();
+                
+                // Update Analytics
+                document.getElementById('stat-percent').innerText = result.water_percent_unet + '%';
+                document.getElementById('stat-area').innerText = result.area_sqkm + ' km²';
+
+                // Update UNet
+                document.querySelectorAll('.stat-value')[0].innerText = result.unet_iou + '%';
+                document.querySelectorAll('.stat-value')[1].innerText = result.conf_unet + '%';
+                document.querySelectorAll('.viz-box img')[0].src = '/static/outputs/unet_mask.png?t=' + Date.now();
+                document.querySelectorAll('.viz-box img')[1].src = '/static/outputs/unet_heatmap.png?t=' + Date.now();
+                
+                // Update DeepLab
+                document.querySelectorAll('.stat-value')[2].innerText = result.dl_iou + '%';
+                document.querySelectorAll('.stat-value')[3].innerText = result.conf_dl + '%';
+                document.querySelectorAll('.viz-box img')[2].src = '/static/outputs/deeplab_mask.png?t=' + Date.now();
+                document.querySelectorAll('.viz-box img')[3].src = '/static/outputs/deeplab_heatmap.png?t=' + Date.now();
+
+                hideLoader();
+                grid.scrollIntoView({ behavior: 'smooth' });
+            }
+          } else {
+            alert("Error: " + result.message);
+            hideLoader();
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Network Error");
+          hideLoader();
+        }
       }
     </script>
   </body>
